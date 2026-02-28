@@ -1,0 +1,11 @@
+{
+  "name": "Sen — Daily Well-being",
+  "short_name": "Sen",
+  "description": "Personal well-being journal",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#eef4ee",
+  "theme_color": "#eef4ee",
+  "orientation": "portrait-primary",
+  "categories": ["health", "lifestyle"]
+}
