@@ -108,7 +108,10 @@ export default function MonthView({ year, month, days, onDayClick, onPrev, onNex
     [days, year, month, todayStr]
   )
   const smokeData = useMemo(
-    () => computeStreakData(days, year, month, todayStr, e => e?.smoking === false),
+    () => computeStreakData(days, year, month, todayStr, e => {
+      if (e?.cigarettes !== undefined && e.cigarettes !== null) return e.cigarettes === 0
+      return e?.smoking === false  // backward compat
+    }),
     [days, year, month, todayStr]
   )
 
@@ -176,6 +179,13 @@ export default function MonthView({ year, month, days, onDayClick, onPrev, onNex
             ? entry.emojis
             : entry?.emoji ? [entry.emoji] : []
 
+          // Notification-style badges: sick 🤒 / fap count / cigarette count
+          const badges = []
+          if (entry?.sick)                            badges.push({ type: 'sick', label: '🤒' })
+          if ((entry?.fap ?? 0) > 0)                  badges.push({ type: 'fap',  label: entry.fap >= 10 ? '9+' : String(entry.fap) })
+          const cigCount = entry?.cigarettes ?? (entry?.smoking === true ? 1 : null)
+          if (cigCount !== null && cigCount > 0)       badges.push({ type: 'cig',  label: cigCount >= 10 ? '9+' : String(cigCount) })
+
           const classes = [
             'cal-cell',
             isToday  ? 'today'    : '',
@@ -201,6 +211,13 @@ export default function MonthView({ year, month, days, onDayClick, onPrev, onNex
                 ? <FloatingEmojis emojis={emojis} />
                 : entry && <span className="cell-dot" />
               }
+              {badges.length > 0 && (
+                <div className="cell-badges">
+                  {badges.map(b => (
+                    <span key={b.type} className={`cell-badge badge-${b.type}`}>{b.label}</span>
+                  ))}
+                </div>
+              )}
             </div>
           )
         })}

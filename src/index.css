@@ -1111,6 +1111,88 @@ input, textarea {
   background: hsla(5,65%,94%,0.7);
 }
 
+/* ── Generic +/- counter (fap & cigarettes) ────────────────────────────── */
+.counter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.counter-adj {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  font-size: 1.2rem;
+  font-weight: 400;
+  color: var(--text-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s var(--ease);
+  flex-shrink: 0;
+}
+.counter-adj:hover { border-color: var(--jade); color: var(--jade); background: #e8f4e8; }
+
+.counter-display {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 56px;
+  justify-content: center;
+}
+.counter-icon { font-size: 1.1rem; line-height: 1; }
+.counter-num  { font-size: 1.1rem; font-weight: 700; color: var(--text); min-width: 20px; text-align: center; }
+
+.counter-start {
+  padding: 0.42rem 1rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px dashed var(--border-2);
+  font-size: 0.82rem;
+  color: var(--text-3);
+  transition: all 0.15s var(--ease);
+}
+.counter-start:hover { border-color: var(--jade); color: var(--jade); background: #e8f4e8; }
+
+/* Sick button active */
+.gym-btn.sick-btn.active {
+  border-color: hsl(320, 60%, 60%);
+  color: hsl(320, 55%, 42%);
+  box-shadow: 0 0 0 1px hsl(320, 60%, 60%);
+  background: hsla(320, 65%, 95%, 0.7);
+}
+
+/* ── Cell notification badges (top-right corner) ────────────────────────── */
+.cell-badges {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  z-index: 2;
+  pointer-events: none;
+}
+.cell-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 0 3.5px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.22);
+}
+.badge-sick { font-size: 12px; background: none; box-shadow: none; min-width: auto; padding: 0; }
+.badge-fap  { background: #d93535; color: #fff; }
+.badge-cig  { background: #7c6f5e; color: #fff; }
+
 /* Clear button */
 .clear-btn {
   width: 36px;

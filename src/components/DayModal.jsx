@@ -2,18 +2,19 @@ import { useState, useEffect, useMemo } from 'react'
 import dayjs from 'dayjs'
 import { useLanguage } from '../i18n/LanguageContext'
 
-const ALL_EMOJIS = ['🌿', '💪', '📚', '😊', '🌙', '✨', '🏋️', '💼', '🌸', '🔥', '😔', '🧘', '🎯', '💫', '🌊']
+const ALL_EMOJIS = ['🌿', '💪', '📚', '😊', '🌙', '✨', '🏋️', '💼', '🌸', '🔥', '😔', '🧘', '🎯', '💫', '🌊', '🤒']
 const MAX_EMOJIS = 4
 
 const DEFAULTS = {
   emojis: [],
+  sick: null,
   fap: null,
   work: null,
   loved: null,
   social: null,
   productive: null,
   gym: null,
-  smoking: null,
+  cigarettes: null,
   note: '',
 }
 
@@ -22,12 +23,17 @@ function normalizeEntry(entry) {
   const emojis = Array.isArray(entry.emojis)
     ? entry.emojis
     : entry.emoji ? [entry.emoji] : []
-  const { emoji: _dropped, ...rest } = entry
-  return { ...DEFAULTS, ...rest, emojis }
+  const { emoji: _dropped, smoking, ...rest } = entry
+  // Migrate old smoking boolean → cigarettes number
+  const cigarettes = rest.cigarettes !== undefined ? rest.cigarettes
+    : smoking === false ? 0
+    : smoking === true  ? 1
+    : null
+  return { ...DEFAULTS, ...rest, emojis, cigarettes }
 }
 
 function suggestEmojis(form) {
-  const { fap, work, loved, social, productive, gym } = form
+  const { fap, work, loved, social, productive, gym, sick } = form
   const ratings = [work, loved, social, productive].filter((v) => v !== null)
   const avg = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null
   const picks = []
@@ -45,6 +51,7 @@ function suggestEmojis(form) {
   if (avg !== null && avg <= 2)                         picks.push('😔')
   if ((fap ?? 0) >= 2 && (avg === null || avg <= 2.5)) picks.push('🌙')
   if (avg !== null && avg >= 4 && !fap)                picks.push('🔥')
+  if (sick)                                            picks.unshift('🤒')
   if (picks.length === 0)                              picks.push('🌿')
 
   return [...new Set(picks)].slice(0, 3)
@@ -70,22 +77,33 @@ function StarRating({ value, onChange }) {
   )
 }
 
-function FapCounter({ value, onChange, t }) {
-  const labels = [t.fapClean, '1×', '2×', '3+']
+// Generic +/- counter used for both fap and cigarettes
+function Counter({ value, onChange, zeroLabel, icon, negIcon }) {
+  const n = value ?? 0
   return (
-    <div className="fap-row">
-      {labels.map((label, i) => (
-        <button
-          key={i}
-          type="button"
-          className={`fap-btn ${value === i ? 'active' : ''}`}
-          onClick={() => onChange(value === i ? null : i)}
-        >
-          {label}
+    <div className="counter-row">
+      {value === null ? (
+        <button type="button" className="counter-start" onClick={() => onChange(0)}>
+          + track
         </button>
-      ))}
-      {value !== null && (
-        <button type="button" className="clear-btn" onClick={() => onChange(null)}>✕</button>
+      ) : (
+        <>
+          <button
+            type="button"
+            className="counter-adj"
+            onClick={() => onChange(n <= 0 ? null : n - 1)}
+          >−</button>
+          <span className="counter-display">
+            <span className="counter-icon">{n === 0 ? (negIcon ?? icon) : icon}</span>
+            <span className="counter-num">{n === 0 ? zeroLabel : n}</span>
+          </span>
+          <button
+            type="button"
+            className="counter-adj"
+            onClick={() => onChange(n + 1)}
+          >+</button>
+          <button type="button" className="clear-btn" onClick={() => onChange(null)}>✕</button>
+        </>
       )}
     </div>
   )
@@ -125,9 +143,10 @@ export default function DayModal({ dateKey, entry, onSave, onDelete, onClose }) 
 
   function handleSave() {
     const hasData =
-      form.emojis.length > 0 || form.fap !== null || form.work !== null ||
-      form.loved !== null || form.social !== null || form.productive !== null ||
-      form.gym !== null || form.smoking !== null || form.note.trim()
+      form.emojis.length > 0 || form.sick !== null || form.fap !== null ||
+      form.work !== null || form.loved !== null || form.social !== null ||
+      form.productive !== null || form.gym !== null ||
+      form.cigarettes !== null || form.note.trim()
     if (hasData) onSave(dateKey, { ...form, note: form.note.trim() })
     onClose()
   }
@@ -189,12 +208,35 @@ export default function DayModal({ dateKey, entry, onSave, onDelete, onClose }) 
                 )}
               </section>
 
+              {/* Sick */}
+              <section className="modal-section">
+                <label className="section-label">
+                  <span className="section-icon">🤒</span> {t.sectionSick}
+                </label>
+                <div className="gym-toggle-row">
+                  <button
+                    type="button"
+                    className={`gym-btn sick-btn ${form.sick === true ? 'active' : ''}`}
+                    onClick={() => set('sick', form.sick === true ? null : true)}
+                  >{t.sickLabel}</button>
+                  {form.sick !== null && (
+                    <button type="button" className="clear-btn" onClick={() => set('sick', null)}>✕</button>
+                  )}
+                </div>
+              </section>
+
               {/* Fap */}
               <section className="modal-section">
                 <label className="section-label">
                   <span className="section-icon">🌙</span> {t.sectionFap}
                 </label>
-                <FapCounter value={form.fap} onChange={(v) => set('fap', v)} t={t} />
+                <Counter
+                  value={form.fap}
+                  onChange={(v) => set('fap', v)}
+                  zeroLabel={t.fapClean}
+                  icon="🌙"
+                  negIcon="✓"
+                />
               </section>
 
               {/* Work */}
@@ -251,26 +293,18 @@ export default function DayModal({ dateKey, entry, onSave, onDelete, onClose }) 
                 </div>
               </section>
 
-              {/* Smoking */}
+              {/* Cigarettes */}
               <section className="modal-section">
                 <label className="section-label">
                   <span className="section-icon">🚬</span> {t.sectionSmoking}
                 </label>
-                <div className="gym-toggle-row">
-                  <button
-                    type="button"
-                    className={`smoke-btn clean ${form.smoking === false ? 'active' : ''}`}
-                    onClick={() => set('smoking', form.smoking === false ? null : false)}
-                  >{t.smokeFree}</button>
-                  <button
-                    type="button"
-                    className={`smoke-btn bad ${form.smoking === true ? 'active' : ''}`}
-                    onClick={() => set('smoking', form.smoking === true ? null : true)}
-                  >{t.smokedToday}</button>
-                  {form.smoking !== null && (
-                    <button type="button" className="clear-btn" onClick={() => set('smoking', null)}>✕</button>
-                  )}
-                </div>
+                <Counter
+                  value={form.cigarettes}
+                  onChange={(v) => set('cigarettes', v)}
+                  zeroLabel={t.smokeFree}
+                  icon="🚬"
+                  negIcon="🚭"
+                />
               </section>
 
               {/* Note */}

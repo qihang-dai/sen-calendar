@@ -37,7 +37,16 @@ function smokeToScore(val) {
 function parseEntry(entry) {
   if (!entry) return { mainDims: [], fapLevel: 0, avg: null }
 
-  const { fap = null, work = null, loved = null, social = null, productive = null, gym = null, smoking = null } = entry
+  const {
+    fap = null, work = null, loved = null, social = null, productive = null,
+    gym = null, smoking = null, cigarettes: cigField = null, sick = null,
+  } = entry
+
+  // Backward compat: old smoking boolean → cigarettes number
+  const effectiveCigs = cigField !== null ? cigField
+    : smoking === false ? 0
+    : smoking === true  ? 1
+    : null
 
   const mainDims = []
   const push = (key, score) => {
@@ -49,13 +58,13 @@ function parseEntry(entry) {
   push('social',     social)
   push('productive', productive)
   push('gym',        gymToScore(gym))
-  push('smoking',    smokeToScore(smoking))
+  // smoking/cigarettes NOT pushed into mainDims — smoke-free shows on border only, not gradient
 
-  // Weighted avg for overall tone (fap/smoke have weight but aren't gradient bands)
-  const fapWeight   = !fap ? 0 : fap === 1 ? 1.5 : 3
-  const fapScore    = !fap ? null : fap === 1 ? 2 : 0
-  const smokeWeight = smoking === true ? 0.8 : 0
-  const smokeScore  = smoking === true ? 1.5 : null
+  // Weighted avg: fap and smoking drag score down (not shown as color bands)
+  const fapWeight   = !fap ? 0 : fap === 1 ? 1.5 : fap === 2 ? 2.5 : 3.5
+  const fapScore    = !fap ? null : fap === 1 ? 2 : fap === 2 ? 1 : 0
+  const smokeWeight = (effectiveCigs !== null && effectiveCigs > 0) ? 0.8 : 0
+  const smokeScore  = (effectiveCigs !== null && effectiveCigs > 0) ? 1.5 : null
 
   const allDims = [...mainDims]
   if (fapScore !== null)   allDims.push({ key: 'fap',   score: fapScore,   weight: fapWeight   })
@@ -65,7 +74,7 @@ function parseEntry(entry) {
   const sumW   = allDims.reduce((s, d) => s + (d.score ?? 0) * (d.weight ?? 1), 0)
   const avg    = totalW > 0 ? sumW / totalW : null
 
-  return { mainDims, fapLevel: fap ?? 0, avg }
+  return { mainDims, fapLevel: fap ?? 0, effectiveCigs, isSick: sick === true, avg }
 }
 
 // Adjust a color's saturation + lightness based on score intensity (0–5)
@@ -134,20 +143,30 @@ export function dayToGradient(entry) {
 // Returns the dominant dimension's color at moderate saturation as a CSS string
 
 export function dayToBorderColor(entry) {
-  const { mainDims, fapLevel, avg } = parseEntry(entry)
+  const { mainDims, fapLevel, effectiveCigs } = parseEntry(entry)
 
-  if (mainDims.length === 0 && fapLevel === 0) return null
+  const smokeFree = effectiveCigs === 0
+
+  if (mainDims.length === 0 && fapLevel === 0 && !smokeFree) return null
+
+  // Smoke-free with no other dims → pure teal border
+  if (mainDims.length === 0 && !fapLevel) return `hsl(175, 62%, 40%)`
 
   if (mainDims.length === 0) return `hsl(270, 35%, 45%)`
 
   // Dominant = highest scorer
   const dom = mainDims.reduce((best, d) => d.score > best.score ? d : best, mainDims[0])
   const { h, s, l } = dom.color
-  const t = dom.score / 5
+  const t  = dom.score / 5
   const bS = Math.round(s * (0.55 + t * 0.35))
   const bL = Math.round(l - t * 8)
 
-  // If fap heavy, shift border toward purple
+  // Smoke-free: blend border hue toward teal (175)
+  if (smokeFree) {
+    const blendH = Math.round(h + (175 - h) * 0.4)
+    return `hsl(${blendH},${bS}%,${bL - 3}%)`
+  }
+  // Heavy fap: shift border toward purple
   if (fapLevel >= 2) return `hsl(${h + 20},${bS - 10}%,${bL - 5}%)`
   return `hsl(${h},${bS}%,${bL}%)`
 }
@@ -155,7 +174,8 @@ export function dayToBorderColor(entry) {
 // ── Public: flat single color for tiny year-view mini cells ─────────────────
 
 export function dayToFlatColor(entry) {
-  const { mainDims, fapLevel } = parseEntry(entry)
+  const { mainDims, fapLevel, effectiveCigs } = parseEntry(entry)
+  const _ = effectiveCigs // available if needed
 
   if (mainDims.length === 0 && fapLevel === 0) return null
   if (mainDims.length === 0) return `hsl(270, 28%, 55%)`
