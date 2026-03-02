@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import dayjs from 'dayjs'
+import { Analytics } from '@vercel/analytics/react'
 import { LanguageProvider } from './i18n/LanguageContext'
 import { useCreds, useCalendarData } from './hooks/useCalendarData'
 import SetupGuide from './components/SetupGuide'
@@ -114,6 +115,7 @@ export default function App() {
   return (
     <LanguageProvider>
       <AppInner />
+      <Analytics />
     </LanguageProvider>
   )
 }
